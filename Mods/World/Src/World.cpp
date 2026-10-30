@@ -5,6 +5,8 @@
 #include "Glacier/ZGameLoopManager.h"
 #include "Glacier/ZGameTime.h"
 
+#include <Windows.h>
+
 World::~World() {
     const ZMemberDelegate<World, void(const SGameUpdateEvent&)> s_Delegate(this, &World::OnFrameUpdate);
     Globals::GameLoopManager->UnregisterFrameUpdate(s_Delegate, 1, EUpdateMode::eUpdatePlayMode);
@@ -65,6 +67,22 @@ void World::OnDrawUI(const bool p_HasFocus) {
 }
 
 void World::OnFrameUpdate(const SGameUpdateEvent& p_UpdateEvent) {
+    // Hotkey: toggle the game time multiplier (only while the game window is focused).
+    DWORD s_ForegroundPid = 0;
+    GetWindowThreadProcessId(GetForegroundWindow(), &s_ForegroundPid);
+
+    const bool s_HotkeyDown = s_ForegroundPid == GetCurrentProcessId() && (GetAsyncKeyState(c_SlowdownHotkey) & 0x8000) != 0;
+
+    if (s_HotkeyDown && !m_HotkeyWasDown) {
+        m_IsTimeMultiplierEnabled = !m_IsTimeMultiplierEnabled;
+
+        if (!m_IsTimeMultiplierEnabled) {
+            Globals::GameTimeManager->m_fGameTimeMultiplier = 1.0f;
+        }
+    }
+
+    m_HotkeyWasDown = s_HotkeyDown;
+
     if (m_IsTimeMultiplierEnabled && Globals::GameTimeManager->m_fGameTimeMultiplier != m_GameTimeMultiplier) {
         Globals::GameTimeManager->m_fGameTimeMultiplier = m_GameTimeMultiplier;
     }
